@@ -38,26 +38,22 @@ public class BNZScraper extends AbstractScraper {
     }
 
     public List<Transaction> exportStatements(Account account, Date startDate, Date endDate) throws Exception {
-        try {
-            HtmlPage bankingPage = login();
-            HtmlPage accountHome = bankingPage.getElementById(String.format("account-%s", account.getNaturalId())).click();
-            DomElement transactionPanel = accountHome.getElementById(String.format("transactions-panel-%s", account.getNaturalId()));
-            HtmlElement exportButton = transactionPanel
-                    .getFirstElementChild()
-                    .getFirstElementChild()
-                    .getLastElementChild()
-                    .getElementsByTagName("button").get(1);
+        HtmlPage bankingPage = login();
+        HtmlPage accountHome = bankingPage.getElementById(String.format("account-%s", account.getNaturalId())).click();
+        DomElement transactionPanel = accountHome.getElementById(String.format("transactions-panel-%s", account.getNaturalId()));
+        HtmlElement exportButton = transactionPanel
+                .getFirstElementChild()
+                .getFirstElementChild()
+                .getLastElementChild()
+                .getElementsByTagName("button").get(1);
 
-            HtmlPage exportModalOpened = waitPageToLoad(exportButton.click());
-            DomElement saveButton = getFirstElementByXpath(exportModalOpened, "/html/body/div[1]/div[2]/div[3]/div[4]/button[2]");
+        HtmlPage exportModalOpened = waitPageToLoad(exportButton.click(), "export-frequency");
+        DomElement saveButton = getFirstElementByXpath(exportModalOpened, "/html/body/div[1]/div[2]/div[3]/div[4]/button[2]");
 
-            Page csv = saveButton.click();
-            String accountTransactionsRaw = csv.getWebResponse().getContentAsString();
+        Page csv = saveButton.click();
+        String accountTransactionsRaw = csv.getWebResponse().getContentAsString();
 
-            return parseTransactions(accountTransactionsRaw, account);
-        } finally {
-            webClient.getCookieManager().clearCookies();
-        }
+        return parseTransactions(accountTransactionsRaw, account);
     }
 
     private List<Transaction> parseTransactions(String accountTransactionsRaw, Account account) throws ParseException {
@@ -111,10 +107,11 @@ public class BNZScraper extends AbstractScraper {
     }
 
     private HtmlPage login() throws Exception {
-        HtmlPage loginPage = waitPageToLoad(webClient.getPage(BNZ_URL));
+        webClient.getCookieManager().clearCookies();
+        HtmlPage loginPage = waitPageToLoad(webClient.getPage(BNZ_URL), "login");
         loginPage.getElementById("accessId").setAttribute("value", accessId);
         loginPage.getElementById("password").setAttribute("value", password);
 
-        return waitPageToLoad(loginPage.getElementById("login").click());
+        return waitPageToLoad(loginPage.getElementById("login").click(), "accounts");
     }
 }

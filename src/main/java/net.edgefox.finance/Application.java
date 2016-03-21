@@ -58,7 +58,6 @@ public class Application {
                         }
 
                         Collections.reverse(transactionsToSave);
-
                         transactions = transactionsToSave;
                     }
 
