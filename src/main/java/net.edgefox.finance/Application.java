@@ -1,53 +1,72 @@
 package net.edgefox.finance;
 
 import com.google.inject.Inject;
-import net.edgefox.finance.scraper.Account;
-import net.edgefox.finance.scraper.Transaction;
+import com.google.inject.persist.PersistService;
+import net.edgefox.finance.entity.Account;
+import net.edgefox.finance.entity.Transaction;
 import net.edgefox.finance.scraper.bnz.BNZScraper;
-import org.apache.commons.lang3.StringEscapeUtils;
-import org.apache.commons.lang3.StringUtils;
+import net.edgefox.finance.service.AccountService;
+import net.edgefox.finance.service.TransactionService;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by edgefox on 3/19/16.
  */
 public class Application {
-    private static final String INSERT_TEMPLATE = "insert into transactions(date, amount, payee, particulars, code, reference, transaction_type) values %s";
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat("yy-MM-dd");
+    private static final Log log = LogFactory.getLog(Application.class);
+    private final SimpleDateFormat dateFormat;
     @Inject
     private BNZScraper bnzScraper;
     @Inject
-    private Connection dbConnection;
+    private TransactionService transactionService;
+    @Inject
+    private AccountService accountService;
+    private final ScheduledExecutorService threadPool;
+
+    @Inject
+    public Application(PersistService persistService) {
+        persistService.start();
+        threadPool = Executors.newSingleThreadScheduledExecutor();
+        dateFormat = new SimpleDateFormat("yy-MM-dd");
+    }
 
     @Inject
     public void run() throws Exception {
-        List<Account> accounts = bnzScraper.getAccounts();
-        for (Account account : accounts) {
-            saveTransactions(bnzScraper.exportStatements(account, null, null));
-        }
-    }
+        threadPool.scheduleAtFixedRate((Runnable) () -> {
+            try {
+                List<Account> accounts = bnzScraper.getAccounts();
+                accountService.saveAll(accounts);
 
-    public void saveTransactions(List<Transaction> transactions) throws SQLException {
-        String[] inserts = new String[transactions.size()];
-        for (int i = 0; i < transactions.size(); i++) {
-            Transaction transaction = transactions.get(i);
-            String date = dateFormat.format(transaction.getDate());
-            inserts[i] = String.format("('%s', %s, '%s', '%s', '%s', '%s', '%s')",
-                    date,
-                    transaction.getAmount(),
-                    StringEscapeUtils.escapeEcmaScript(transaction.getPayee()),
-                    StringEscapeUtils.escapeEcmaScript(transaction.getParticulars()),
-                    StringEscapeUtils.escapeEcmaScript(transaction.getCode()),
-                    StringEscapeUtils.escapeEcmaScript(transaction.getReference()),
-                    StringEscapeUtils.escapeEcmaScript(transaction.getTransactionType()));
-        }
-        Statement statement = dbConnection.createStatement();
-        String insert = String.format(INSERT_TEMPLATE, StringUtils.join(inserts, ","));
-        statement.execute(insert);
+                for (Account account : accounts) {
+                    final Transaction lastTransactionForAccount = transactionService.getLastTransactionForAccount(account);
+                    List<Transaction> transactions = bnzScraper.exportStatements(account, null, null);
+                    if (lastTransactionForAccount != null && !transactions.isEmpty()) {
+                        int currentTransactionIndex = transactions.size() - 1;
+                        List<Transaction> transactionsToSave = new ArrayList<>();
+                        while (!lastTransactionForAccount.equals(transactions.get(currentTransactionIndex)) && currentTransactionIndex >= 0) {
+                            transactionsToSave.add(transactions.get(currentTransactionIndex));
+                            currentTransactionIndex--;
+                        }
+
+                        Collections.reverse(transactionsToSave);
+
+                        transactions = transactionsToSave;
+                    }
+
+                    transactionService.saveAll(transactions);
+                }
+            } catch (Exception e) {
+                log.error(e.getMessage(), e);
+            }
+        }, 0, 1, TimeUnit.MINUTES);
     }
 }

@@ -8,8 +8,8 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import net.edgefox.finance.scraper.AbstractScraper;
-import net.edgefox.finance.scraper.Account;
-import net.edgefox.finance.scraper.Transaction;
+import net.edgefox.finance.entity.Account;
+import net.edgefox.finance.entity.Transaction;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -39,8 +39,8 @@ public class BNZScraper extends AbstractScraper {
 
     public List<Transaction> exportStatements(Account account, Date startDate, Date endDate) throws Exception {
         HtmlPage bankingPage = login();
-        HtmlPage accountHome = bankingPage.getElementById(String.format("account-%s", account.getId())).click();
-        DomElement transactionPanel = accountHome.getElementById(String.format("transactions-panel-%s", account.getId()));
+        HtmlPage accountHome = bankingPage.getElementById(String.format("account-%s", account.getNaturalId())).click();
+        DomElement transactionPanel = accountHome.getElementById(String.format("transactions-panel-%s", account.getNaturalId()));
         HtmlElement exportButton = transactionPanel
                 .getFirstElementChild()
                 .getFirstElementChild()
@@ -54,10 +54,10 @@ public class BNZScraper extends AbstractScraper {
         String accountTransactionsRaw = csv.getWebResponse().getContentAsString();
         webClient.getCookieManager().clearCookies();
 
-        return parseTransactions(accountTransactionsRaw);
+        return parseTransactions(accountTransactionsRaw, account);
     }
 
-    private List<Transaction> parseTransactions(String accountTransactionsRaw) throws ParseException {
+    private List<Transaction> parseTransactions(String accountTransactionsRaw, Account account) throws ParseException {
         List<Transaction> transactions = new ArrayList<>();
         String[] rows = accountTransactionsRaw.split("\\r\\n");
         for (String row : Arrays.copyOfRange(rows, 1, rows.length)) {
@@ -75,6 +75,7 @@ public class BNZScraper extends AbstractScraper {
             transaction.setCode(fields[4]);
             transaction.setReference(fields[5]);
             transaction.setTransactionType(fields[6]);
+            transaction.setAccount(account);
             transactions.add(transaction);
         }
 
@@ -96,7 +97,7 @@ public class BNZScraper extends AbstractScraper {
             BigDecimal balance = new BigDecimal(balanceText.replaceAll(",", ""));
 
             Account account = new Account();
-            account.setId(element.getId().replaceAll("^account-", ""));
+            account.setNaturalId(element.getId().replaceAll("^account-", ""));
             account.setName(accountName);
             account.setBalance(balance);
 

@@ -17,7 +17,7 @@ public abstract class AbstractScraper implements Scraper {
     }
 
     public HtmlPage waitPageToLoad(HtmlPage page) throws Exception {
-        Thread.sleep(3000);
+        Thread.sleep(5000);
 
         return page;
     }

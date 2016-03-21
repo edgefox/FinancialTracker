@@ -1,5 +1,8 @@
 package net.edgefox.finance.scraper;
 
+import net.edgefox.finance.entity.Account;
+import net.edgefox.finance.entity.Transaction;
+
 import java.util.Date;
 import java.util.List;
 

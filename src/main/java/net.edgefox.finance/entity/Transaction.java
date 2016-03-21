@@ -1,19 +1,45 @@
-package net.edgefox.finance.scraper;
+package net.edgefox.finance.entity;
 
+import javax.persistence.*;
 import java.math.BigDecimal;
 import java.util.Date;
 
 /**
  * Created by edgefox on 3/19/16.
  */
+@Entity
+@Table(name = "transaction")
 public class Transaction {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private long id;
+    @Temporal(TemporalType.DATE)
+    @Column(nullable = false, name = "date")
     private Date date;
+    @Column(nullable = false, name = "amount")
     private BigDecimal amount;
+    @Column(nullable = false, name = "payee")
     private String payee;
+    @Column(nullable = true, name = "particulars")
     private String particulars;
+    @Column(nullable = true, name = "code")
     private String code;
+    @Column(nullable = true, name = "reference")
     private String reference;
+    @Column(nullable = true, name = "transaction_type")
     private String transactionType;
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Category category;
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Account account;
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
 
     public Date getDate() {
         return date;
@@ -69,6 +95,22 @@ public class Transaction {
 
     public void setTransactionType(String transactionType) {
         this.transactionType = transactionType;
+    }
+
+    public Category getCategory() {
+        return category;
+    }
+
+    public void setCategory(Category category) {
+        this.category = category;
+    }
+
+    public Account getAccount() {
+        return account;
+    }
+
+    public void setAccount(Account account) {
+        this.account = account;
     }
 
     @Override
