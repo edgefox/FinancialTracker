@@ -38,23 +38,26 @@ public class BNZScraper extends AbstractScraper {
     }
 
     public List<Transaction> exportStatements(Account account, Date startDate, Date endDate) throws Exception {
-        HtmlPage bankingPage = login();
-        HtmlPage accountHome = bankingPage.getElementById(String.format("account-%s", account.getNaturalId())).click();
-        DomElement transactionPanel = accountHome.getElementById(String.format("transactions-panel-%s", account.getNaturalId()));
-        HtmlElement exportButton = transactionPanel
-                .getFirstElementChild()
-                .getFirstElementChild()
-                .getLastElementChild()
-                .getElementsByTagName("button").get(1);
+        try {
+            HtmlPage bankingPage = login();
+            HtmlPage accountHome = bankingPage.getElementById(String.format("account-%s", account.getNaturalId())).click();
+            DomElement transactionPanel = accountHome.getElementById(String.format("transactions-panel-%s", account.getNaturalId()));
+            HtmlElement exportButton = transactionPanel
+                    .getFirstElementChild()
+                    .getFirstElementChild()
+                    .getLastElementChild()
+                    .getElementsByTagName("button").get(1);
 
-        HtmlPage exportModalOpened = waitPageToLoad(exportButton.click());
-        DomElement saveButton = getFirstElementByXpath(exportModalOpened, "/html/body/div[1]/div[2]/div[3]/div[4]/button[2]");
+            HtmlPage exportModalOpened = waitPageToLoad(exportButton.click());
+            DomElement saveButton = getFirstElementByXpath(exportModalOpened, "/html/body/div[1]/div[2]/div[3]/div[4]/button[2]");
 
-        Page csv = saveButton.click();
-        String accountTransactionsRaw = csv.getWebResponse().getContentAsString();
-        webClient.getCookieManager().clearCookies();
+            Page csv = saveButton.click();
+            String accountTransactionsRaw = csv.getWebResponse().getContentAsString();
 
-        return parseTransactions(accountTransactionsRaw, account);
+            return parseTransactions(accountTransactionsRaw, account);
+        } finally {
+            webClient.getCookieManager().clearCookies();
+        }
     }
 
     private List<Transaction> parseTransactions(String accountTransactionsRaw, Account account) throws ParseException {
