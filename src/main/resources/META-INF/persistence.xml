@@ -12,6 +12,7 @@
         <class>net.edgefox.finance.entity.Account</class>
         <class>net.edgefox.finance.entity.Category</class>
         <class>net.edgefox.finance.entity.Transaction</class>
+        <class>net.edgefox.finance.entity.Criteria</class>
         <properties>
             <property name="hibernate.connection.driver_class" value="com.mysql.jdbc.Driver" />
             <property name="hibernate.connection.url" value="jdbc:mysql://localhost:3306/financial_tracker" />

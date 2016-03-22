@@ -1,6 +1,7 @@
 package net.edgefox.finance.entity;
 
 import javax.persistence.*;
+import java.util.List;
 
 /**
  * Created by ivan.lyutov on 21/03/16.
